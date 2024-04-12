@@ -1,6 +1,9 @@
 import Logger from "./utils/logger";
 import Elysia from "elysia";
+import staticPlugin from "@elysiajs/static";
 import { cors } from '@elysiajs/cors'
+import ROUTE_API from "./routes/api";
+import index from "./routes/index/main";
 
 const port = 8080;
 const log = new Logger();
@@ -14,23 +17,22 @@ globalThis.log = log;
 log.log("Starting the workshop...");
 // log.error("An error occurred!");
 // log.info("Informational message!");
-log.warn("Nothing has been done yet!");
 
-const app = new Elysia();
-
-app.get("/api/ping", ({}) => {
-    return "pong";
-})
-    .use(cors());
-
-
-app.get("/", ({
-    params: { name }
-}) => {
-    return `Hello, ${name}!`;
+await Bun.build({
+    entrypoints: ['./src/react/index.tsx'],
+    outdir: './public',
 });
-
-app.listen(port, () => {
-    log.info(`Server is running on port ${port}`);
-});
+  
+new Elysia()
+    .use(staticPlugin({
+        assets: "public",
+        prefix: "/public"
+    }))
+    .use(ROUTE_API)
+    .use(index)
+    .state("author", "AlexVeeBee")
+    .state("version", "1.0.0")
+    .listen(port, () => {
+        log.info(`Server is running on port ${port}`);
+    });
 
