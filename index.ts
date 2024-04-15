@@ -29,10 +29,11 @@ new Elysia()
         prefix: "/public"
     }))
     .use(ROUTE_API)
-    .use(index)
     .state("author", "AlexVeeBee")
     .state("version", "1.0.0")
     .listen(port, () => {
-        log.info(`Server is running on port ${port}`);
+        log.info(`Server is running on port ${port}
+        > http://localhost:${port}
+        `);
     });
 
