@@ -1,7 +1,7 @@
 import Elysia, { t } from "elysia";
 // fs
 import fs from "fs"
-import type { Asset, User } from "../../../utils/types";
+import type { Asset, IUser } from "../../../utils/types";
 import { getUserBasic } from "../users/get";
 const assetspath = "assets/items";
 const assetTemplate: Asset = {

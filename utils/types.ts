@@ -4,10 +4,11 @@ export type AssetProperties =
     | "VISIBILITY"
     ;
 
-export type User = {
+export type IUser = {
     id: string | number;
     username: string;
     pfp: string | null;
+    banner?: string | null;
 }
 
 export interface Asset {
@@ -17,7 +18,7 @@ export interface Asset {
     tags: string[];
     thumb: string;
     images?: string[];
-    authors: User[];
+    authors: IUser[];
     properties?: {
         [key in AssetProperties]?: string;
     }

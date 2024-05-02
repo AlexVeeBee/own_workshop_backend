@@ -1,12 +1,13 @@
 const RESET = "\x1b[0m";
 
 class Logger {
-    constructor() {}
-
-    globalstyle = "border-radius: 5px; padding: 0 5px;"
+    constructor() {
+        console.log(this.types.log, `${this.logstart("log")}`, RESET, "Logger initialized!");
+    }
 
     types = {
         log: '\x1b[32m',
+        success: '\x1b[32m',
         error: '\x1b[31m',
         warn: '\x1b[33m',
         info: '\x1b[36m',
@@ -26,6 +27,10 @@ class Logger {
         console.log(this.types.log, `${this.logstart("log")}`, RESET,...args);
     }
 
+    success(...args: any[]) {
+        console.log(this.types.success, `${this.logstart("success")}`, RESET,...args);
+    }
+
     error(...args: any[]) {
         console.error(this.types.error, `${this.logstart("error")}`, RESET,...args);
     }
@@ -38,5 +43,10 @@ class Logger {
         console.info(this.types.info, `${this.logstart("info")}`, RESET,...args);
     }
 }
+
+declare global {
+    var log: Logger;
+}
+globalThis.log = new Logger();
 
 export default Logger;
