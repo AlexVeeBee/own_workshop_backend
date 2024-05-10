@@ -11,14 +11,29 @@ export type IUser = {
     banner?: string | null;
 }
 
+export interface AssetMedia {
+    type: 
+        | null
+        | "image"
+        | "video"
+        | "audio"
+        | "unknown"
+    src: string;
+}
+
+interface IAssetLimits {
+    name: string;
+}
 export interface Asset {
     id: number;
     name: string;
     description?: string;
     tags: string[];
     thumb: string;
-    images?: string[];
+    media?: AssetMedia[] | string[] | undefined | null;
     authors: IUser[];
+    owner: IUser | string;
+    limits?: string[];
     properties?: {
         [key in AssetProperties]?: string;
     }
