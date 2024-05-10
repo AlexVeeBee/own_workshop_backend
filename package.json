@@ -2,6 +2,10 @@
   "name": "own_workshop",
   "module": "index.ts",
   "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "bun index.js"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },

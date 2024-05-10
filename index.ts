@@ -36,6 +36,7 @@ process.on("error", (error) => {
 new Elysia()
     .state("author", "AlexVeeBee")
     .state("version", "1.0.0")
+    .decorate("logger", log)
     .use(staticPlugin({
         assets: "assets",
         prefix: "/assets"
