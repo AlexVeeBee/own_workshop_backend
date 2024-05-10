@@ -1,7 +1,7 @@
 import Elysia, { t } from "elysia";
 // fs
 import fs from "fs"
-import type { Asset, IUser } from "../../../utils/types";
+import type { Asset, AssetMedia, IUser } from "../../../utils/types";
 import { getUserBasic } from "../users/get";
 const assetspath = "assets/items";
 const assetTemplate: Asset = {
@@ -10,14 +10,15 @@ const assetTemplate: Asset = {
     description: "",
     tags: [],
     thumb: "",
-    images: [],
+    media: [],
     authors: [],
+    owner: "",
     properties: {
         CSS: "",
     }
 }
 
-const getImages = (id: number) => {
+const getImages = (id: number): AssetMedia[] => {
     const path = `${assetspath}/${id}/images`;
     if (!fs.existsSync(path)) {
         return [];
@@ -26,7 +27,21 @@ const getImages = (id: number) => {
     const sort = read.sort((a, b) => {
         return a.localeCompare(b);
     });
-    return sort.map(file => `${path}/${file}`);
+
+    const media: AssetMedia[] = [];
+    sort.forEach(file => {
+        const type = getMediaType(file);
+        if (type) {
+            media.push({
+                type,
+                src: `${path}/${file}`,
+            });
+        }
+    });
+
+    return media;
+
+    // return sort.map(file => `${path}/${file}`);
 }
 const getThumb = (id: number) => {
     const path = `${assetspath}/${id}`;
@@ -62,6 +77,23 @@ const CheckJSONmissingKeys = (list: any, keys: string[]) => {
     return checks;
 }
 
+const types_video = ["mp4", "webm", "ogg"];
+const types_image = ["jpg", "jpeg", "png", "gif"];
+
+const getMediaType = (file: string) => {
+    if (!file) return;
+    const ext = file.split(".").pop();
+    if (!ext) return;
+    if (types_image.includes(ext)) {
+        return "image";
+    }
+    if (types_video.includes(ext)) {
+        return "video";
+    }
+    return "unknown";
+
+}
+
 const ListAssets = () => {
     const list: Asset[] = [];
     const read = fs.readdirSync(assetspath);
@@ -82,19 +114,24 @@ const ListAssets = () => {
         }
 
         // check if the author is missing
-        if (!info.authors) {
-            info.authors = [
-                {
-                    id: 0,
-                    username: "Unknown",
-                    pfp: "assets/unknown.png",
-                }
-            ];
-        } else {
+        if (info.authors) {
             info.authors = info.authors.map((id: any) => {
                 const num = parseInt(id);
                 return getUserBasic(num);
             });
+        }
+
+        if (info.owner) {
+            info.owner = getUserBasic(parseInt(info.owner as string));
+        }
+
+        if (info.authors && info.authors.length === 0) {
+            // @ts-expect-error
+            info.authors = null;
+            info.limits = [
+                "disable-comments",
+                "disable-config",
+            ]
         }
 
         if (info) {
@@ -103,7 +140,7 @@ const ListAssets = () => {
                 return;
             }
             info.thumb = thumb;
-            info.images = getImages(parseInt(dir));
+            info.media = getImages(parseInt(dir));
             list.push(info);
         }
     });
@@ -117,6 +154,42 @@ const ListAssets = () => {
 }
 
 const placeholder = ListAssets();
+
+const addZero = (num: number) => {
+    return num < 10 ? `0${num}` : num;
+}
+
+const formatDate = (date: Date) => {
+    // format the date to "YYYY-MM-DD HH:MM:SS"
+    const d = date.getDate();
+    const m = date.getMonth();
+    const y = date.getFullYear();
+    const h = date.getHours();
+    const min = date.getMinutes();
+    const s = date.getSeconds();
+
+    return `${d} / ${m} / ${y} ${h}:${addZero(min)}:${addZero(s)}`;
+}
+
+const comments_placeholder: {
+    id: number,
+    user: IUser,
+    comment: string,
+    date: string,
+}[] = [
+    {
+        id: 0,
+        user: getUserBasic(1),
+        comment: "This is a placeholder comment.",
+        date: formatDate(new Date()),
+    },
+    {
+        id: 1,
+        user: getUserBasic(2),
+        comment: "Wow, this is amazing!",
+        date: formatDate(new Date()),
+    }
+]
 
 const WORKSHOP_API = new Elysia()
     .get("/api/workshop", () => {
@@ -140,6 +213,41 @@ const WORKSHOP_API = new Elysia()
         }
         return asset;
     }, {
+        tags: ["API", "Workshop"],
+    })
+    .get("/api/workshop/get/:id/comments", async ({ params: { id } }) => {
+        return comments_placeholder;
+    }, {
+        tags: ["API", "Workshop"],
+    })
+    .get("/api/workshop/download/:id/zip", async ({ params: { id } }) => {
+        return new Response("NOT_IMPLEMENTED", { status: 501 });
+    }, {
+        detail: {
+            description: "Download the asset as a ZIP file.",
+        },
+        params: t.Object({
+            id: t.String(),
+        }),
+        tags: ["API", "Workshop"],
+    })
+    .get("/api/workshop/download/:id/file", 
+    async ({ 
+        params: { id }, 
+        query: { path }
+    }) => {
+        console.log(path);
+        return new Response(`NOT_IMPLEMENTED: ${path}`, { status: 501 })
+    }, {
+        detail: {
+            description: "Download a file from the asset.",
+        },
+        params: t.Object({
+            id: t.String(),
+        }),
+        query: t.Object({
+            path: t.String(),
+        }),
         tags: ["API", "Workshop"],
     })
     // .post("/api/workshop/upload", ({

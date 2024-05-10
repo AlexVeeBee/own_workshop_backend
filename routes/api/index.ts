@@ -15,7 +15,8 @@ const ROUTE_API = new Elysia()
     .use(WORKSHOP_API)
     .use(USER_API)
     .onError((error) => {
-        console.error(error);
+        log.error(error);
+        return new Response("Internal Server Error", { status: 500 });
     })
 
 export default ROUTE_API;

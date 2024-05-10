@@ -24,7 +24,7 @@ const getPFP = (id: number) => {
     if (!fs.existsSync(path)) { return null; }
     const pfp = fs.readdirSync(path).find(file => file.match(match_pfp));
     if (pfp) {
-        return `${path}/${pfp}`;
+        return `${path}${pfp}`;
     }
     return null;
 }
@@ -64,7 +64,6 @@ class User {
 
     init() {
         this.setupFolder();
-        this.watchFolder();
     }
 
     setFolder(folder: string) {
@@ -130,40 +129,6 @@ class User {
             throw new Error("PFP not found!");
         }
     }
-
-    watchFolder() {
-        if (!this.folder) {
-            throw new Error("Folder not set!");
-        }
-        if (!fs.existsSync(this.folder)) {
-            fs.mkdirSync(this.folder);
-        }
-        if (this.folderListener) {
-            this.folderListener.close();
-        }
-        // check if foler is being watched from another instance
-
-        this.folderListener = fs.watch(this
-            .folder, (event, filename) => {
-                log.info(`[${this.folder}] Event: ${event}, Filename: ${filename}`);
-                // rip the extension
-                const file = filename?.split(".")[0];
-                if (file === "pfp") {
-                    this.pfp = getPFP(this.id);
-                }
-                if (file === "banner") {
-                    this.banner = getBanner(this.id);
-                }
-            });
-
-        setTimeout(() => {
-            if(!this.folderListener) {
-                return;
-            }
-            this.folderListener.close();
-            log.warn(`Folder ${this.folder} was closed! Timeout reached!`);
-        }, 1000 * 60 * 5 ); // 5 minutes
-    }
 }
 
 const usersPlaceholder: User[] = [
@@ -200,6 +165,24 @@ const USER_API = new Elysia()
         return user.getUserJSON();
     }, {
         tags: ["API", "User"],
-    });
+    })
+    .get("/api/user/verify/:id", ({
+        params: { id }
+    }) => {
+        log.info(`Verifying user with id ${id}`);
+        const user = usersPlaceholder.find(user => user.id === parseInt(id));
+        if (!user) {
+            return new Response("NOT_FOUND", { status: 404 });
+        }
+        try {
+            user.folderCheck();
+            return new Response("OK", { status: 200 });
+        } catch (error: any) {
+            log.error(error);
+            return new Response("ERROR", { status: 500, statusText: error.message });
+        }
+    }, {
+        tags: ["API", "User"],
+    })
 
 export default USER_API;
