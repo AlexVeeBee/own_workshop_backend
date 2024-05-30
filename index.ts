@@ -3,7 +3,7 @@ import Elysia from "elysia";
 import staticPlugin from "@elysiajs/static";
 import swagger from "@elysiajs/swagger";
 import ROUTE_API from "./routes/api";
-const port = 8080;
+const port = process.env.PORT || 8080;
 log.log("Starting the workshop...");
 
 if (typeof Bun === "undefined") {
@@ -39,7 +39,7 @@ new Elysia()
     .decorate("logger", log)
     .use(staticPlugin({
         assets: "assets",
-        prefix: "/assets"
+        prefix: "/assets",
     }))
     .use(swagger({
         version: "1.0.0",

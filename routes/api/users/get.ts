@@ -1,4 +1,4 @@
-import Elysia from "elysia";
+import Elysia, { t } from "elysia";
 import type { IUser } from "../../../utils/types";
 import fs from "fs";
 
@@ -6,18 +6,6 @@ const folder = "assets/users";
 
 const match_pfp = /pfp\.(jpg|jpeg|png|gif|webp)/;
 const match_banner = /banner\.(jpg|jpeg|png|gif|webp)/;
-
-const fileConflicts = (folder: string) => {
-    if (!fs.existsSync(folder)) {
-        fs.mkdirSync(folder);
-    }
-    const files = fs.readdirSync(folder);
-    const conflicts = files.filter(file => {
-        return !fs.lstatSync(`${folder}/${file}`).isDirectory();
-    });
-    log.info(`Conflicts: ${conflicts}`);
-    return conflicts;
-}
 
 const getPFP = (id: number) => {
     const path = `${folder}/${id}/`;
@@ -40,16 +28,23 @@ const getBanner = (id: number) => {
 }
 
 class User {
-    private folderListener: fs.FSWatcher | null = null;
     id: number;
     username: string;
     pfp: string | null;
     banner?: string | null;
     folder?: string;
-    constructor(id: number, username: string, pfp: string | null) {
+    nsfw: boolean = false;
+    constructor(id: number, username: string, pfp: string | null, config?: {
+        nsfw?: boolean,
+    }) {
         this.id = id;
         this.username = username;
         this.pfp = pfp;
+
+        if (config) {
+            this.nsfw = config.nsfw || false;
+        }
+
         this.init();
     }
 
@@ -105,6 +100,7 @@ class User {
                 username: this.username,
                 pfp: verify.pfp,
                 banner: verify.banner,
+                nsfw: this.nsfw,
             }
         } catch (error) {
             log.error(error);
@@ -113,6 +109,7 @@ class User {
                 username: this.username,
                 pfp: this.pfp,
                 banner: null,
+                nsfw: this.nsfw,
             }
         }
     }
@@ -124,11 +121,15 @@ class User {
         if (!fs.existsSync(this.folder)) {
             fs.mkdirSync(this.folder);
         }
-        const files = fs.readdirSync(this.folder);
-        if (!files.find(file => file.match(match_pfp))) {
-            throw new Error("PFP not found!");
-        }
+        // const files = fs.readdirSync(this.folder);
+        // if (!files.find(file => file.match(match_pfp))) {
+        //     throw new Error("PFP not found!");
+        // }
     }
+}
+
+const randomNumber = (min: number, max: number) => {
+    return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
 const usersPlaceholder: User[] = [
@@ -136,6 +137,17 @@ const usersPlaceholder: User[] = [
     new User(2, "Cat", getPFP(2)),
     new User(3, "John Doe", getPFP(3)),
     new User(4, "Jane Doe", getPFP(4)),
+    new User(5, "Lord", getPFP(5), { nsfw: true, }),
+    new User(6, `User${randomNumber(100, 999)}`,  getPFP(250)),
+    new User(7, `User${randomNumber(100, 999)}`,  getPFP(250)),
+    new User(8, `User${randomNumber(100, 999)}`,  getPFP(250)),
+    new User(9, `User${randomNumber(100, 999)}`,  getPFP(250)),
+    new User(10, `User${randomNumber(100, 999)}`, getPFP(250)),
+    new User(11, `User${randomNumber(100, 999)}`, getPFP(250)),
+    new User(12, `User${randomNumber(100, 999)}`, getPFP(250)),
+    new User(13, `User${randomNumber(100, 999)}`, getPFP(250)),
+    new User(14, `User${randomNumber(100, 999)}`, getPFP(250)),
+    new User(15, `User${randomNumber(100, 999)}`, getPFP(250)),
 ]
 
 export const getUserBasic = (id: number): IUser  => {
@@ -150,9 +162,61 @@ export const getUserBasic = (id: number): IUser  => {
 }
 
 const USER_API = new Elysia()
-    .get("/api/users", () => {
+    .get("/api/users", ({
+        query: { limit, offset, search }
+    }) => {
+        search = search || "";
         log.info("Users were requested!");
-        return usersPlaceholder.map(user => user.getUserJSON());
+        if (typeof limit !== "number" || typeof offset !== "number") {
+            return new Response("INVALID_PARAMS", { status: 400 });
+        }
+        if (limit < 0 || offset < 0) {
+            return new Response("INVALID_PARAMS", { status: 400 });
+        }
+
+        if (typeof search === "string") {
+            // no need to be case sensitive
+            search = search.toLowerCase();
+            const users = usersPlaceholder.filter(user => user.username.toLowerCase().includes(search as string));
+            return users.slice(offset, offset + limit).map(user => user.getUserJSON());
+        }
+        return usersPlaceholder.slice(offset, offset + limit).map(user => user.getUserJSON());
+    }, {
+        tags: ["API", "User"],
+        query: t.Object({
+            limit:t.Optional( t.Numeric({ minimum: 0, default: 10,})),
+            offset:t.Optional(t.Numeric({ minimum: 0, default: 0 })),
+            search: t.Optional(t.String()),
+        }),
+        detail: {
+            description: "Get all users",
+            responses: {
+                200: {
+                    description: "Users found",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        id: { type: "number" },
+                                        username: { type: "string" },
+                                        pfp: { type: "string" },
+                                        banner: { type: "string" },
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    })
+    .get("/api/users/count", () => {
+        return usersPlaceholder.length;
+    }, {
+        tags: ["API", "User"],
     })
     .get("/api/user/get/:id", ({
         params: { id }
@@ -176,7 +240,7 @@ const USER_API = new Elysia()
         }
         try {
             user.folderCheck();
-            return new Response("OK", { status: 200 });
+            return getUserBasic(user.id);
         } catch (error: any) {
             log.error(error);
             return new Response("ERROR", { status: 500, statusText: error.message });

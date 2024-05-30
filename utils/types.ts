@@ -9,6 +9,7 @@ export type IUser = {
     username: string;
     pfp: string | null;
     banner?: string | null;
+    nsfw: boolean;
 }
 
 export interface AssetMedia {
@@ -19,6 +20,7 @@ export interface AssetMedia {
         | "audio"
         | "unknown"
     src: string;
+    smallSrc?: string | null;
 }
 
 interface IAssetLimits {
@@ -33,10 +35,17 @@ export interface Asset {
     media?: AssetMedia[] | string[] | undefined | null;
     authors: IUser[];
     owner: IUser | string;
+    latestVersion?: string | null
     limits?: string[];
+    nsfw: boolean;
     properties?: {
         [key in AssetProperties]?: string;
     }
+}
+
+export interface AssetVersion {
+    version: string,
+    date: Date,
 }
 
 
