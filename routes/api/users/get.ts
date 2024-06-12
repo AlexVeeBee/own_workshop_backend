@@ -1,6 +1,7 @@
 import Elysia, { t } from "elysia";
 import type { IUser } from "../../../utils/types";
 import fs from "fs";
+import type { v1Prefix } from "../../../utils/vars";
 
 const folder = "assets/users";
 
@@ -27,6 +28,12 @@ const getBanner = (id: number) => {
     return null;
 }
 
+interface UserConfig {
+    nsfw?: boolean;
+    admin?: boolean;
+    created?: Date;
+}
+
 class User {
     id: number;
     username: string;
@@ -34,15 +41,17 @@ class User {
     banner?: string | null;
     folder?: string;
     nsfw: boolean = false;
-    constructor(id: number, username: string, pfp: string | null, config?: {
-        nsfw?: boolean,
-    }) {
+    admin: boolean = false;
+    created: Date = new Date();
+    constructor(id: number, username: string, pfp: string | null, config?: UserConfig) {
         this.id = id;
         this.username = username;
         this.pfp = pfp;
 
         if (config) {
             this.nsfw = config.nsfw || false;
+            this.admin = config.admin || false;
+            this.created = config.created || new Date();
         }
 
         this.init();
@@ -77,7 +86,7 @@ class User {
         let banner = getBanner(this.id);
 
         if (!pfp) {
-            throw new Error("PFP not found!");
+            throw new Error("PFP not found! attempting to access: " + `${this.folder}`);
         }
         // banner is optional
         if (banner && !fs.existsSync(banner)) {
@@ -101,15 +110,19 @@ class User {
                 pfp: verify.pfp,
                 banner: verify.banner,
                 nsfw: this.nsfw,
+                admin: this.admin,
+                created: this.created,
             }
-        } catch (error) {
-            log.error(error);
+        } catch (error: any) {
+            log.error("Failed to veryfiy images", error.message);
             return {
                 id: this.id,
                 username: this.username,
                 pfp: this.pfp,
                 banner: null,
                 nsfw: this.nsfw,
+                admin: this.admin,
+                created: this.created,
             }
         }
     }
@@ -132,22 +145,235 @@ const randomNumber = (min: number, max: number) => {
     return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
+const firstNames: string[] = [
+    "Joseph",
+    "John",
+    "Robert",
+    "Michael",
+    "William",
+    "David",
+    "Richard",
+    "Charles",
+    "Joseph",
+    "Thomas",
+    "Daniel",
+    "Matthew",
+    "Anthony",
+    "Donald",
+    "Mark",
+    "Paul",
+    "Steven",
+    "Andrew",
+    "Kenneth",
+    "Joshua",
+    "George",
+    "Kevin",
+    "Brian",
+    "Edward",
+    "Ronald",
+    "Timothy",
+    "Jason",
+    "Jeffrey",
+    "Frank",
+    "Gary",
+    "Ryan",
+    "Nicholas",
+    "Eric",
+    "Stephen",
+    "Jacob",
+    "Larry",
+    "Jonathan",
+    "Scott",
+    "Raymond",
+    "Justin",
+    "Brandon",
+    "Gregory",
+    "Samuel",
+    "Benjamin",
+    "Patrick",
+    "Jack",
+    "Henry",
+    "Walter",
+    "Dennis",
+    "Jerry",
+    "Alexander",
+    "Mary",
+    "Patricia",
+    "Jennifer",
+    "Linda",
+    "Elizabeth",
+    "Barbara",
+    "Susan",
+    "Jessica",
+    "Sarah",
+    "Karen",
+    "Nancy",
+    "Lisa",
+    "Betty",
+    "Dorothy",
+    "Sandra",
+    "Ashley",
+    "Kimberly",
+    "Donna",
+    "Emily",
+    "Michelle",
+    "Carol",
+    "Amanda",
+    "Melissa",
+    "Deborah",
+    "Stephanie",
+    "Rebecca",
+    "Laura",
+    "Sharon",
+    "Cynthia",
+    "Kathleen",
+    "Helen",
+    "Amy",
+    "Shirley",
+    "Angela",
+    "Anna",
+    "Ruth",
+    "Brenda",
+    "Pamela",
+    "Nicole",
+    "Katherine",
+    "Virginia",
+    "Catherine",
+    "Christine",
+    "Samantha",
+    "Debra",
+    "Janet",
+    "Carolyn",
+    "Rachel",
+    "Heather",
+    "Maria",
+    "Diane",
+    "Emma",
+    "Julie",
+    "Joyce",
+    "Frances",
+    "Evelyn",
+    "Joan",
+    "Christina",
+    "Kelly",
+    "Martha",
+]
+
+const lastNames: string[] = [
+    "Doe",
+    "Smith",
+    "Johnson",
+    "Williams",
+    "Jones",
+    "Brown",
+    "Davis",
+    "Miller",
+    "Wilson",
+    "Moore",
+    "Taylor",
+    "Anderson",
+    "Thomas",
+    "Jackson",
+    "White",
+    "Harris",
+    "Martin",
+    "Thompson",
+    "Garcia",
+    "Martinez",
+    "Robinson",
+    "Clark",
+    "Rodriguez",
+    "Lewis",
+    "Lee",
+    "Walker",
+    "Hall",
+    "Allen",
+    "Young",
+    "Hernandez",
+    "King",
+    "Wright",
+    "Lopez",
+    "Hill",
+    "Scott",
+    "Green",
+    "Adams",
+    "Baker",
+    "Gonzalez",
+    "Nelson",
+    "Carter",
+    "Mitchell",
+    "Perez",
+    "Roberts",
+    "Turner",
+    "Phillips",
+    "Campbell",
+    "Parker",
+    "Evans",
+    "Edwards",
+    "Collins",
+    "Stewart",
+    "Sanchez",
+    "Morris",
+    "Rogers",
+    "Reed",
+    "Cook",
+    "Morgan",
+    "Bell",
+    "Murphy",
+    "Bailey",
+    "Rivera",
+    "Cooper",
+    "Richardson",
+    "Cox",
+    "Howard",
+    "Ward",
+    "Torres",
+    "Peterson",
+    "Gray",
+    "Ramirez",
+    "James",
+    "Watson",
+    "Brooks",
+    "Kelly",
+    "Sanders",
+    "Price",
+    "Bennett",
+    "Wood",
+    "Barnes",
+    "Ross",
+    "Henderson",
+    "Coleman",
+    "Jenkins",
+    "Perry",
+    "Powell",
+    "Long",
+    "Patterson",
+    "Hughes",
+    "Flores",
+    "Washington",
+    "Butler",
+    "Simmons",
+    "Foster",
+    "Gonzales",
+    "Bryant",
+    "Alexander",
+    "Russell",
+    "Griffin",
+    "Diaz",
+    "Hayes",
+]
+
 const usersPlaceholder: User[] = [
-    new User(1, "Admin", getPFP(1)),
-    new User(2, "Cat", getPFP(2)),
+    new User(1, "Admin", getPFP(1), { admin: true }),
+    new User(2, "Cat", getPFP(2), { admin: true, nsfw: true }),
     new User(3, "John Doe", getPFP(3)),
     new User(4, "Jane Doe", getPFP(4)),
     new User(5, "Lord", getPFP(5), { nsfw: true, }),
-    new User(6, `User${randomNumber(100, 999)}`,  getPFP(250)),
-    new User(7, `User${randomNumber(100, 999)}`,  getPFP(250)),
-    new User(8, `User${randomNumber(100, 999)}`,  getPFP(250)),
-    new User(9, `User${randomNumber(100, 999)}`,  getPFP(250)),
-    new User(10, `User${randomNumber(100, 999)}`, getPFP(250)),
-    new User(11, `User${randomNumber(100, 999)}`, getPFP(250)),
-    new User(12, `User${randomNumber(100, 999)}`, getPFP(250)),
-    new User(13, `User${randomNumber(100, 999)}`, getPFP(250)),
-    new User(14, `User${randomNumber(100, 999)}`, getPFP(250)),
-    new User(15, `User${randomNumber(100, 999)}`, getPFP(250)),
+    ...Array.from({ length: 5 }, (_, index) => {
+        const id = index + 6;
+        const username = `${firstNames[randomNumber(0, firstNames.length - 1)]} ${lastNames[randomNumber(0, lastNames.length - 1)]}`;
+        return new User(id, username, getPFP(250));
+    })
 ]
 
 export const getUserBasic = (id: number): IUser  => {
@@ -161,8 +387,10 @@ export const getUserBasic = (id: number): IUser  => {
     return user.getUserJSON();
 }
 
-const USER_API = new Elysia()
-    .get("/api/users", ({
+const USERS_API = new Elysia({
+    prefix: "/v1/users" as v1Prefix
+})
+    .get("/", ({
         query: { limit, offset, search }
     }) => {
         search = search || "";
@@ -184,7 +412,7 @@ const USER_API = new Elysia()
     }, {
         tags: ["API", "User"],
         query: t.Object({
-            limit:t.Optional( t.Numeric({ minimum: 0, default: 10,})),
+            limit:t.Optional( t.Numeric({ minimum: 0, default: 20,})),
             offset:t.Optional(t.Numeric({ minimum: 0, default: 0 })),
             search: t.Optional(t.String()),
         }),
@@ -213,12 +441,16 @@ const USER_API = new Elysia()
             }
         }
     })
-    .get("/api/users/count", () => {
+    .get("/count", () => {
         return usersPlaceholder.length;
     }, {
         tags: ["API", "User"],
     })
-    .get("/api/user/get/:id", ({
+
+const USER_API = new Elysia({
+    prefix: "/v1/user" as v1Prefix
+})    
+    .get("/get/:id", ({
         params: { id }
     }) => {
         log.info(`User with id ${id} was requested!`);
@@ -230,10 +462,10 @@ const USER_API = new Elysia()
     }, {
         tags: ["API", "User"],
     })
-    .get("/api/user/verify/:id", ({
+    .get("/verify/:id", ({
         params: { id }
     }) => {
-        log.info(`Verifying user with id ${id}`);
+        log.info(`Getting user with id ${id}`);
         const user = usersPlaceholder.find(user => user.id === parseInt(id));
         if (!user) {
             return new Response("NOT_FOUND", { status: 404 });
@@ -249,4 +481,9 @@ const USER_API = new Elysia()
         tags: ["API", "User"],
     })
 
-export default USER_API;
+const USER_ROUTE = {
+    USERS_API,
+    USER_API,
+}
+
+export default USER_ROUTE;

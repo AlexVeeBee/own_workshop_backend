@@ -6,11 +6,11 @@ class Logger {
     }
 
     types = {
-        log: '\x1b[36m',
-        success: '\x1b[32m',
-        error: '\x1b[31m',
-        warn: '\x1b[33m',
-        info: '\x1b[34m',
+        log: '\x1b[36m\x1b[1m',
+        success: '\x1b[32m\x1b[1m',
+        error: '\x1b[31m\x1b[1m',
+        warn: '\x1b[33m\x1b[1m',
+        info: '\x1b[34m\x1b[1m',
     };
 
     currentTime() {

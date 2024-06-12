@@ -2,6 +2,7 @@ export type AssetProperties =
     | "ASSETSPATH" 
     | "CSS" 
     | "VISIBILITY"
+    | "MISSINGMANIFEST"
     ;
 
 export type IUser = {
@@ -9,7 +10,10 @@ export type IUser = {
     username: string;
     pfp: string | null;
     banner?: string | null;
-    nsfw: boolean;
+    admin?: boolean;
+    nsfw?: boolean;
+    roles?: string[];
+    created: Date;
 }
 
 export interface AssetMedia {
@@ -29,17 +33,20 @@ interface IAssetLimits {
 export interface Asset {
     id: number;
     name: string;
-    description?: string;
+    description?: string[];
+    shortDescription?: string;
     tags: string[];
     thumb: string;
     media?: AssetMedia[] | string[] | undefined | null;
-    authors: IUser[];
     owner: IUser | string;
+    authors: IUser[];
     latestVersion?: string | null
     limits?: string[];
     nsfw: boolean;
+    created?: Date;
+    updated?: Date;
     properties?: {
-        [key in AssetProperties]?: string;
+        [key in AssetProperties]?: string | boolean | null;
     }
 }
 
@@ -53,4 +60,13 @@ export interface WorkshopInfo {
     title: string;
     description: string;
     headerimage: string;
+}
+
+export interface IBanInfo {
+    id: string;
+    reason: string;
+    date: Date;
+    expires: Date;
+    bannedBy: IUser;
+    bannedUser: IUser;
 }

@@ -10,20 +10,22 @@ class FakeAccount {
     loginToken: string;
     id: number;
     username: string;
+    email: string;
     password: string;
-    constructor(id: number, username: string, password: string) {
+    constructor(id: number, email: string, username: string, password: string) {
         this.username = username;
+        this.email = email;
         this.password = password;
         this.id = id;
         this.loginToken = createUUID();
-        console.table(this);
     }
 }
 
 const placeholder = [
-    new FakeAccount(1, "test", "test"),
-    new FakeAccount(2, "admin", "admin"),
-    new FakeAccount(3, "user", "user")
+    new FakeAccount(1, "owner@m.com", "test", "test"),
+    new FakeAccount(2, "admin@m.com", "admin", "admin"),
+    new FakeAccount(3, "user@m.com", "user", "user"),
+    new FakeAccount(5, "lord@m.com", "lord", "lord")
 ]
 
 const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,16}$/;
@@ -162,6 +164,8 @@ const USER_LOGIN = new Elysia()
                 status: 200
             });
         }
+
+        console.table(basic);
 
         const r = {
             token: user.loginToken,

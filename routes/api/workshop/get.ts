@@ -9,7 +9,8 @@ export const assetspath = "assets/items";
 const assetTemplate: Asset = {
     id: 0,
     name: "Asset",
-    description: "",
+    description: [""],
+    shortDescription: "",
     tags: [],
     thumb: "",
     media: [],
@@ -28,19 +29,22 @@ const assetTemplate: Asset = {
 //         .resize(width, height)
 //         .toBuffer();
 // }
-const GenerateSmallImages = async (id: number, blur: boolean = false ) => {
+
+
+const GenerateSmallImages = async (path: string, blur: boolean = false ) => {
     return await new Promise(async (resolve, reject) => {
-        const path = `${assetspath}/${id}/images`;
+        let generatedCount = 0;
         if (!fs.existsSync(path)) {
+            log.warn(`Path ${path} does not exist!`);
             resolve(false);
             return;
         }
         const read = fs.readdirSync(path);
-        const sort = read.sort((a, b) => {
+        let sort = read.sort((a, b) => {
             return a.localeCompare(b);
         });
 
-        const smallpath = `${assetspath}/${id}/images/small`;
+        const smallpath = `${path}/small`;
         if (!fs.existsSync(smallpath)) {
             fs.mkdirSync(smallpath);
         } else {
@@ -51,39 +55,49 @@ const GenerateSmallImages = async (id: number, blur: boolean = false ) => {
             });
         }
 
-        sort.forEach(async file => {
-            const type = getMediaType(file);
-            if (type === "image") {
-                // 16:9
-
-                const buffer = fs.readFileSync(`${path}/${file}`);
-                const image = sharp(buffer);
-
-                // get aspect ratio
-                const metadata = await image.metadata();
-                if (!metadata) {
-                    reject("Failed to get metadata for image");
-                    return;
-                }
-                const width = metadata.width || 16;
-                const height = metadata.height || 9;
-                const ratio = width / height;
-                const pixels = 128;
-
-                image.resize(pixels, Math.floor(pixels / ratio));
-
-                if (blur) {
-                    image.blur(16);
-                }
-
-                image.toFile(`${smallpath}/${file}`);
-
-                log.info(`Generated small image for ${id}/${file}`);
-            }
+        // ignore folders
+        sort = sort.filter(file => {
+            const stat = fs.statSync(`${path}/${file}`);
+            return !stat.isDirectory();
         });
 
-        resolve(true);
-        return;
+        sort.forEach(async (file, i) => {
+                const type = getMediaType(file);
+                if (type === "image") {
+                    const buffer = fs.readFileSync(`${path}/${file}`);
+                    const image = sharp(buffer);
+
+                    // get aspect ratio
+                    const metadata = await image.metadata();
+                    if (!metadata) {
+                        reject("Failed to get metadata for image");
+                        return;
+                    }
+                    const width = metadata.width || 16;
+                    const height = metadata.height || 9;
+                    const ratio = width / height;
+                    const pixels = 128;
+
+                    image.resize(pixels, Math.floor(pixels / ratio));
+
+                    if (blur) {
+                        image.blur(16);
+                    }
+
+                    image.toFile(`${smallpath}/${file}`, (err, info) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        log.success(`Generated small image for ${file}`);
+                        generatedCount++;
+                        if (generatedCount === sort.length) {
+                            log.success(`Generated small images for ${path}`);
+                            resolve(true);
+                        }
+                    });
+                }
+        })
     });
 }
 
@@ -98,7 +112,7 @@ const getSmallImage = (id: number, filename: string) => {
 
 let getImagesCache = new Map<number, AssetMedia[]>();
 
-const getImages = (id: number): AssetMedia[] => {
+const getImages = async (id: number, assetinfo?: Asset): Promise<AssetMedia[]> => {
     const path = `${assetspath}/${id}/images`;
     if (!fs.existsSync(path)) {
         return [];
@@ -122,6 +136,8 @@ const getImages = (id: number): AssetMedia[] => {
     sort = sort.sort((a, b) => {
         return a.localeCompare(b);
     });
+
+    await GenerateSmallImages(path, assetinfo?.nsfw);
 
     const media: AssetMedia[] = [];
     sort.forEach(file => {
@@ -158,14 +174,21 @@ const getThumb = (id: number) => {
     }
     return null;
 }
-const GetManifest = (id: number) => {
+const GetManifest = (id: number): Asset => {
     const path = `${assetspath}/${id}/manifest.json`;
     if (fs.existsSync(path)) {
         return JSON.parse(fs
             .readFileSync(path)
             .toString());
     }
-    return null;
+    return {
+        ...assetTemplate,
+        id,
+        properties: {
+            ...assetTemplate.properties,
+            MISSINGMANIFEST: true,
+        }
+    };
 }
 
 const types_video = ["mp4", "webm", "ogg"];
@@ -201,18 +224,23 @@ const ListAssets = async () => {
                 return;
             }
             let info: Asset = await GetManifest(parseInt(dir));
-            if (!info) {
+            if (info.properties?.MISSINGMANIFEST) {
                 // create a new asset
                 info = { ...assetTemplate };
                 info.id = parseInt(dir);
                 info.name = `Asset ${info.id}`;
-                info.description = `Template for asset ${info.id}. There was no manifest file found for this asset.`;
+                info.description = [
+                    "# Missing manifest",
+                    "There is no manifest file for this asset.",
+                    "- Please create a manifest file for this asset.",
+                ]
+                info.shortDescription = `Missing manifest file. Asset ${info.id}`;
                 info.tags = ["SFW/NSFW", "Not configured"];
             }
             const nsfw = checkTags(info.tags, ["NSFW", "18+", "+18", "Explicit"]);
             info.nsfw = nsfw;
             // generate small images
-            await GenerateSmallImages(parseInt(dir), nsfw);
+            // await GenerateSmallImages([path], nsfw);
 
             // check if the author is missing
             if (info.authors) {
@@ -241,7 +269,7 @@ const ListAssets = async () => {
                     return;
                 }
                 info.thumb = thumb;
-                info.latestVersion = versionGetLatest(info.id);
+                // info.latestVersion = versionGetLatest(info.id);
                 list.push(info);
             }
         });
@@ -257,7 +285,6 @@ const ListAssets = async () => {
 }
 
 export const assetsPlaceholder = await ListAssets();
-console.table(assetsPlaceholder);
 
 const addZero = (num: number) => {
     return num < 10 ? `0${num}` : num;
@@ -296,6 +323,60 @@ Pretty cool asset!`,
         date: formatDate(new Date()),
     }
 ]
+
+const getSingleAsset = async (id: number): Promise<Asset | null> => {
+    const path = `${assetspath}/${id}`;
+    if (!fs.existsSync(path)) {
+        log.error(`Asset ${id} not found! Folder does not exist.`);
+        return null;
+    }
+    const info = GetManifest(id);
+    if (!info) {
+        log.warn(`Manifest not found for asset ${id}. Creating a temporary one.`);
+    }
+    if ( info.properties?.MISSINGMANIFEST ) {
+        info.name = `Asset ${id}`;
+        info.description = [
+            "# Missing manifest",
+            "There is no manifest file for this asset.",
+            "- Please create a manifest file for this asset.",
+        ]
+        info.shortDescription = `Missing manifest file. Asset ${info.id}`;
+        info.tags = ["SFW/NSFW", "Not configured"];
+    }
+    const nsfw = checkTags(info.tags || [], ["NSFW", "18+", "+18", "Explicit"]);
+    info.nsfw = nsfw;
+    // generate small images
+    log.success("Checks passed")
+    if (info.authors) {
+        info.authors = info.authors.map((id: any) => {
+            const num = parseInt(id);
+            return getUserBasic(num);
+        });
+    }
+
+    if (info.owner) {
+        info.owner = getUserBasic(parseInt(info.owner as string));
+    }
+
+    if (info.authors && info.authors.length === 0) {
+        info.authors = [];
+        info.limits = [
+            "disable-comments",
+            "disable-config",
+        ]
+    }
+
+    const thumb = getThumb(id);
+    if (!thumb) {
+        log.warn("Thumb not found for asset", id)
+        return null;
+    }
+    info.thumb = thumb;
+    info.media = await getImages(id, info);
+    info.latestVersion = versionGetLatest(info.id);
+    return info;
+}
 
 const versionCheck = (id: number, version: string) => {
     const path = `${assetspath}/${id}/versions/${version}.zip`;
@@ -341,13 +422,16 @@ const getAssetVersions = async (id: number): Promise<AssetVersion[]> => {
     return list;
 }
 
-const WORKSHOP_API = new Elysia()
-    .get("/api/workshop", () => {
+const WORKSHOP_API = new Elysia({
+    prefix: "/api/workshop",
+})
+    .get("/", () => {
         const item = assetsPlaceholder.map(asset => {
             return {
                 id: asset.id,
                 name: asset.name,
                 description: asset.description,
+                shortDescription: asset.shortDescription,
                 thumb: asset.thumb,
                 tags: asset.tags,
             }
@@ -357,23 +441,27 @@ const WORKSHOP_API = new Elysia()
         tags: ["API", "Workshop"]
     })
     .use(API_ASSET_UPLOADER)
-    .get("/api/workshop/get/:id", async ({ params: { id } }) => {
-        let asset = assetsPlaceholder.find(a => a.id === parseInt(id));
-        if (!asset) {
-            log.error(`Asset id ${id} was not found!`);
-            return new Response("NOT_FOUND", { status: 404 });
+    .get("/get/:id", async ({ params: { id } }) => {
+        try {
+            let asset = await getSingleAsset(parseInt(id));
+            if (!asset) {
+                log.error(`Asset id ${id} was not found!`);
+                return new Response("NOT_FOUND", { status: 404 });
+            }
+            return asset;
+        } catch (e) {
+            log.error(e);
+            return new Response("ERROR", { status: 500 });
         }
-        asset.media = getImages(asset.id);
-        return asset;
     }, {
         tags: ["API", "Workshop"],
     })
-    .get("/api/workshop/get/:id/comments", async ({ params: { id } }) => {
+    .get("/get/:id/comments", async ({ params: { id } }) => {
         return comments_placeholder;
     }, {
         tags: ["API", "Workshop"],
     })
-    .get("/api/workshop/get/:id/versions", async ({ params: { id } }) => {
+    .get("/get/:id/versions", async ({ params: { id } }) => {
         const a = await getAssetVersions(parseInt(id));
         // sort the versions by date
         a.sort((a, b) => {
@@ -384,7 +472,7 @@ const WORKSHOP_API = new Elysia()
     }, {
         tags: ["API", "Workshop"],
     })
-    .get("/api/workshop/download/:id/zip/latest", async ({ params: { id } }) => {
+    .get("/download/:id/zip/latest", async ({ params: { id } }) => {
         const latest = versionGetLatest(parseInt(id));
         if (!latest) {
             return new Response("NO_LATEST_VERSIONS_AVAILABLE", { status: 404 });
@@ -404,7 +492,7 @@ const WORKSHOP_API = new Elysia()
         }),
         tags: ["API", "Workshop"],
     })
-    .get("/api/workshop/download/:id/zip/:version", async ({ params: { id, version } }) => {
+    .get("/download/:id/zip/:version", async ({ params: { id, version } }) => {
         log.info(`Specific donwload for asset ${id} version ${version}`);
         if (!versionCheck(parseInt(id), version)) {
             log.error(`Version ${version} not found for asset ${id}`);

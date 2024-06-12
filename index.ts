@@ -1,3 +1,8 @@
+if (typeof Bun === "undefined") {
+    // this code will only run when the file is run with Bun
+    throw new Error("This file is not meant to be run with Bun!");        
+}  
+
 import "./utils/logger";
 import Elysia from "elysia";
 import staticPlugin from "@elysiajs/static";
@@ -6,11 +11,9 @@ import ROUTE_API from "./routes/api";
 const port = process.env.PORT || 8080;
 log.log("Starting the workshop...");
 
-if (typeof Bun === "undefined") {
-    // this code will only run when the file is run with Bun
-    throw new Error("This file is not meant to be run with Bun!");        
-}  
-    
+import DBHandler from "./utils/dbHandler";
+const db = new DBHandler();
+
 // watch for unhanded rejections
 process.on("unhandledRejection", (error) => {
     log.error("An unhandled rejection occurred!");
@@ -21,18 +24,12 @@ process.on("uncaughtException", (error) => {
     log.error("An uncaught exception occurred!");
     log.error(error);
 });
-// env
-// log.error("An error occurred!");
-// log.info("Informational message!");
-// await Bun.build({
-//     entrypoints: ['./src/react/index.tsx'],
-//     outdir: './public',
-// });
-// other unhandled errors
+
 process.on("error", (error) => {
     log.error("An error occurred!");
     log.error(error);
 });
+
 new Elysia()
     .state("author", "AlexVeeBee")
     .state("version", "1.0.0")
