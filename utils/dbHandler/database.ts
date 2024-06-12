@@ -6,6 +6,11 @@ export type DBTypes =
 interface IDatabaseConnection {
 }
 
+export interface IDatabase {
+    query(query: string): Promise<any>;
+    connect(): Promise<boolean>;
+}
+
 class Connection implements IDatabaseConnection {
     private db: DBTypes;
 
@@ -19,6 +24,10 @@ class Database {
 
     constructor(type: DBTypes) {
         this.type = type;
+    }
+
+    public getType(): DBTypes {
+        return this.type;
     }
 
     public query(query: string): Promise<any> {
