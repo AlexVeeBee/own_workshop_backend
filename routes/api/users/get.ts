@@ -393,13 +393,15 @@ const USERS_API = new Elysia({
     .get("/", ({
         query: { limit, offset, search }
     }) => {
+        offset = offset || 0;
         search = search || "";
-        log.info("Users were requested!");
         if (typeof limit !== "number" || typeof offset !== "number") {
-            return new Response("INVALID_PARAMS", { status: 400 });
+            log.error("request params are invalid");
+            return new Response("INVALID_PARAMS: limit and offset must be numbers", { status: 400 });
         }
         if (limit < 0 || offset < 0) {
-            return new Response("INVALID_PARAMS", { status: 400 });
+            log.error("request params are invalid");
+            return new Response("INVALID_PARAMS: limit and offset must be positive", { status: 400 });
         }
 
         if (typeof search === "string") {
@@ -412,8 +414,8 @@ const USERS_API = new Elysia({
     }, {
         tags: ["API", "User"],
         query: t.Object({
-            limit:t.Optional( t.Numeric({ minimum: 0, default: 20,})),
-            offset:t.Optional(t.Numeric({ minimum: 0, default: 0 })),
+            limit:  t.Optional(t.Numeric({ minimum: 0, default: 20 })),
+            offset: t.Optional(t.Numeric({ minimum: 0, default: 0  })),
             search: t.Optional(t.String()),
         }),
         detail: {

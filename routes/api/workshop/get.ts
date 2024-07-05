@@ -5,6 +5,7 @@ import fs from "fs"
 import type { Asset, AssetMedia, AssetVersion, IUser } from "../../../utils/types";
 import { getUserBasic } from "../users/get";
 import API_ASSET_UPLOADER from "./upload";
+import type { v1Prefix } from "../../../utils/vars";
 export const assetspath = "assets/items";
 const assetTemplate: Asset = {
     id: 0,
@@ -423,7 +424,7 @@ const getAssetVersions = async (id: number): Promise<AssetVersion[]> => {
 }
 
 const WORKSHOP_API = new Elysia({
-    prefix: "/api/workshop",
+    prefix: "/v1/workshop" as v1Prefix,
 })
     .get("/", () => {
         const item = assetsPlaceholder.map(asset => {
@@ -440,7 +441,6 @@ const WORKSHOP_API = new Elysia({
     }, {
         tags: ["API", "Workshop"]
     })
-    .use(API_ASSET_UPLOADER)
     .get("/get/:id", async ({ params: { id } }) => {
         try {
             let asset = await getSingleAsset(parseInt(id));
@@ -515,6 +515,7 @@ const WORKSHOP_API = new Elysia({
         }),
         tags: ["API", "Workshop"],
     })
+    .use(API_ASSET_UPLOADER)
     // .get("/api/workshop/download/:id/file", 
     // async ({ 
     //     params: { id }, 

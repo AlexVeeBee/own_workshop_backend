@@ -4,10 +4,9 @@ import { t } from "elysia";
 import fs from "fs";
 import path from "path";
 import { assetspath } from "./get";
+import type { v1Prefix } from "../../../utils/vars";
 
-const API_ASSET_UPLOADER = new Elysia({
-    prefix: "/api/workshop",
-})
+const API_ASSET_UPLOADER = new Elysia()
     .post("/upload", async ({body: { file },}) => {
         return new Response("Not implemented", { status: 501 });
     }, {
